@@ -1,0 +1,6 @@
+location_name,country,region,timezone,population,elevation_meters,climate_zone,description
+Hanoi,Vietnam,Northern Vietnam,Asia/Ho_Chi_Minh,8246600,12,Subtropical,Capital city with distinct four seasons
+Ho Chi Minh City,Vietnam,Southern Vietnam,Asia/Ho_Chi_Minh,9077158,19,Tropical,Largest city with hot humid climate year-round
+Da Nang,Vietnam,Central Vietnam,Asia/Ho_Chi_Minh,1230000,3,Tropical monsoon,Major port city with moderate climate
+Can Tho,Vietnam,Mekong Delta,Asia/Ho_Chi_Minh,1238300,2,Tropical monsoon,Heart of Mekong Delta with high rainfall
+Hai Phong,Vietnam,Northern Vietnam,Asia/Ho_Chi_Minh,2028514,3,Subtropical,Major northern port city

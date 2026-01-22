@@ -1,0 +1,59 @@
+
+STATISTICAL INFERENCE REPORT
+================================================================================
+
+1. NORMALITY TESTS
+              Variable  Shapiro_Statistic  Shapiro_p_value Shapiro_Normal  K2_Statistic     K2_p_value K2_Normal
+0      avg_temperature           0.901854     1.804688e-43             No    723.212333  9.045597e-158        No
+1  total_precipitation           0.511986     2.808078e-72             No   4078.314071   0.000000e+00        No
+2         avg_humidity           0.928283     1.032599e-38             No    373.068031   9.756777e-82        No
+3         avg_pressure           0.984894     2.469391e-19             No     97.647316   6.253955e-22        No
+4       avg_wind_speed           0.920004     2.453082e-40             No   1142.216328  9.351383e-249        No
+
+2. TEMPERATURE - season COMPARISON (T-Test)
+   Dry Season Mean: 24.00°C (SD: 4.46)
+   Rainy Season Mean: 27.78°C (SD: 1.85)
+   t-statistic: -33.4378
+   p-value: 0.000000
+   Significant: Yes
+   Effect Size (Cohen's d): -1.1116
+
+3. TEMPERATURE - LOCATION COMPARISON (ANOVA)
+   F-statistic: 157.2866
+   p-value: 0.000000
+   Significant: Yes
+
+4. PRECIPITATION - season COMPARISON (Mann-Whitney U)
+   Dry Season Median: 0.20 mm
+   Rainy Season Median: 5.90 mm
+   U-statistic: 687448.0000
+   p-value: 0.000000
+   Significant: Yes
+
+5. CORRELATION ANALYSIS
+        Variable 1           Variable 2  Pearson_r      Pearson_p  Spearman_r    Spearman_p  Kendall_tau     Kendall_p Significant
+0  avg_temperature         avg_humidity   0.061281   2.096632e-04   -0.186413  6.188274e-30    -0.154462  1.769658e-44         Yes
+1  avg_temperature  total_precipitation   0.056902   5.780530e-04    0.055103  8.599083e-04     0.022609  4.638448e-02         Yes
+2  avg_temperature         avg_pressure  -0.788099   0.000000e+00   -0.710610  0.000000e+00    -0.532227  0.000000e+00         Yes
+3     avg_humidity  total_precipitation   0.414523  8.880008e-152    0.710648  0.000000e+00     0.532813  0.000000e+00         Yes
+4   avg_wind_speed  total_precipitation   0.194701   1.489041e-32   -0.022536  1.731400e-01    -0.015642  1.681771e-01         Yes
+
+6. CONFIDENCE INTERVALS (95%)
+           Location  Temp_Mean  Temp_CI_Lower  Temp_CI_Upper  Precip_Mean  Precip_CI_Lower  Precip_CI_Upper  Humidity_Mean  Humidity_CI_Lower  Humidity_CI_Upper
+0           Can Tho  27.165732      27.058739      27.272725     6.298085         5.732785         6.863385      81.454022          80.868503          82.039541
+1             Hanoi  24.163461      23.802612      24.524310     6.802326         5.766822         7.837829      79.026744          78.316115          79.737374
+2           Da Nang  26.305691      26.055675      26.555707     7.308071         6.035601         8.580542      81.190068          80.637261          81.742876
+3         Hai Phong  24.157811      23.804101      24.511521     5.772640         4.758253         6.787028      80.296224          79.646958          80.945490
+4  Ho Chi Minh City  27.726197      27.615175      27.837219     6.574966         5.945510         7.204422      77.691149          76.935198          78.447101
+
+7. CHI-SQUARE TEST (Hot vs Humid Independence)
+   Chi-square: 356.9526
+   p-value: 0.000000
+   Independent: No
+
+8. POWER ANALYSIS
+   Achieved Power: 1.0000 (100.0%)
+   Sample Size: 1815
+
+================================================================================
+Generated: 2026-01-22 08:55:24.687243

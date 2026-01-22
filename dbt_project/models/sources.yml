@@ -1,0 +1,49 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Raw weather data from Open-Meteo API
+    database: WEATHER_DB
+    schema: RAW
+    tables:
+      - name: WEATHER_RAW
+        description: Raw hourly weather measurements
+        columns:
+          - name: record_id
+            description: Unique identifier for each record
+            tests:
+              - unique
+              - not_null
+          
+          - name: datetime
+            description: Timestamp of the measurement
+            tests:
+              - not_null
+          
+          - name: location_name
+            description: Name of the location
+            tests:
+              - not_null
+          
+          - name: temperature
+            description: Temperature in Celsius
+            tests:
+              - not_null
+          
+          - name: humidity
+            description: Relative humidity percentage
+          
+          - name: precipitation
+            description: Precipitation in mm
+          
+          - name: pressure
+            description: Surface pressure in hPa
+          
+          - name: wind_speed
+            description: Wind speed in km/h
+          
+          - name: wind_direction
+            description: Wind direction in degrees
+          
+          - name: cloud_cover
+            description: Cloud cover percentage

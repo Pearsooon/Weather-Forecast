@@ -1,0 +1,63 @@
+name: 'weather_forecasting'
+version: '1.0.0'
+config-version: 2
+
+profile: 'weather_profile'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+vars:
+  start_date: '2023-01-01'
+  end_date: '2025-12-31'
+
+models:
+  weather_forecasting:
+    +persist_docs:
+      relation: true
+      columns: true
+
+    staging:
+      +materialized: view
+      +schema: STAGING
+      +generate_schema_name: false
+      +tags: ['staging']
+
+    intermediate:
+      +materialized: view
+      +schema: INTERMEDIATE
+      +generate_schema_name: false
+      +tags: ['intermediate']
+
+    marts:
+      +materialized: table
+      +schema: MARTS
+      +generate_schema_name: false
+      +tags: ['marts']
+
+seeds:
+  weather_forecasting:
+    +schema: STAGING_SEEDS
+    +generate_schema_name: false
+    +quote_columns: false
+
+snapshots:
+  weather_forecasting:
+    +target_schema: SNAPSHOTS
+    +generate_schema_name: false
+    +strategy: timestamp
+
+tests:
+  weather_forecasting:
+    +store_failures: true
+    +schema: STAGING_TEST_RESULTS
+    +generate_schema_name: false

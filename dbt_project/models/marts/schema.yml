@@ -1,0 +1,65 @@
+version: 2
+
+models:
+  - name: fct_weather_daily
+    description: Daily weather facts with aggregated metrics
+    columns:
+      - name: daily_id
+        description: Unique daily record ID
+        tests:
+          - unique
+          - not_null
+      
+      - name: location_name
+        description: Location name
+        tests:
+          - not_null
+      
+      - name: date
+        description: Date of measurements
+        tests:
+          - not_null
+      
+      - name: avg_temperature
+        description: Average daily temperature
+        tests:
+          - not_null
+  
+  - name: fct_weather_features
+    description: ML-ready features with lags and rolling aggregates
+    columns:
+      - name: feature_id
+        description: Unique feature record ID
+        tests:
+          - unique
+          - not_null
+  
+  - name: dim_location
+    description: Location dimension
+    columns:
+      - name: location_id
+        description: Unique location ID
+        tests:
+          - unique
+          - not_null
+      
+      - name: location_name
+        description: Location name
+        tests:
+          - unique
+          - not_null
+  
+  - name: dim_date
+    description: Date dimension
+    columns:
+      - name: date_id
+        description: Unique date ID
+        tests:
+          - unique
+          - not_null
+      
+      - name: date
+        description: Calendar date
+        tests:
+          - unique
+          - not_null

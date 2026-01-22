@@ -1,0 +1,10 @@
+EXPLORATORY DATA ANALYSIS SUMMARY
+================================================================================
+
+Total Records: 3655
+Locations: 5
+Date Range: 2024-01-22 to 2026-01-21
+Avg Temperature: 25.90°C
+Total Precipitation: 23944.70 mm
+Avg Humidity: 79.93%
+Avg Wind Speed: 8.79 km/h

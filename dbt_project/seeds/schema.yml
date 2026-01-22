@@ -1,0 +1,80 @@
+version: 2
+
+seeds:
+  - name: location_metadata
+    description: Reference data for weather monitoring locations
+    config:
+      column_types:
+        location_name: varchar(100)
+        country: varchar(100)
+        region: varchar(100)
+        timezone: varchar(50)
+        population: integer
+        elevation_meters: float
+        climate_zone: varchar(50)
+        description: varchar(500)
+    columns:
+      - name: location_name
+        description: Name of the location
+        tests:
+          - unique
+          - not_null
+      
+      - name: population
+        description: Population of the city
+        tests:
+          - not_null
+      
+      - name: elevation_meters
+        description: Elevation above sea level in meters
+
+  - name: weather_thresholds
+    description: Valid ranges for weather metrics
+    config:
+      column_types:
+        metric: varchar(50)
+        min_value: float
+        max_value: float
+        unit: varchar(50)
+        description: varchar(200)
+    columns:
+      - name: metric
+        description: Weather metric name
+        tests:
+          - unique
+          - not_null
+      
+      - name: min_value
+        description: Minimum valid value
+        tests:
+          - not_null
+      
+      - name: max_value
+        description: Maximum valid value
+        tests:
+          - not_null
+
+  - name: season_mapping
+    description: Month to season mapping with characteristics
+    config:
+      column_types:
+        month: integer
+        season: varchar(50)
+        season_type: varchar(50)
+        avg_temp_range: varchar(50)
+        rainfall_level: varchar(50)
+    columns:
+      - name: month
+        description: Month number (1-12)
+        tests:
+          - unique
+          - not_null
+          - accepted_values:
+              values: [1,2,3,4,5,6,7,8,9,10,11,12]
+      
+      - name: season
+        description: Season name
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Dry Season', 'Rainy Season']

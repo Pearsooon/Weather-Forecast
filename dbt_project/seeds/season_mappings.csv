@@ -1,0 +1,13 @@
+month,season,season_type,avg_temp_range,rainfall_level
+1,Dry Season,Cool,15-25,Low
+2,Dry Season,Cool,16-26,Low
+3,Dry Season,Warm,18-28,Low
+4,Dry Season,Hot,22-33,Low
+5,Rainy Season,Hot,24-34,Medium
+6,Rainy Season,Hot,25-34,High
+7,Rainy Season,Hot,25-34,High
+8,Rainy Season,Hot,25-33,High
+9,Rainy Season,Hot,24-32,High
+10,Rainy Season,Warm,23-31,Medium
+11,Dry Season,Cool,20-29,Low
+12,Dry Season,Cool,17-26,Low

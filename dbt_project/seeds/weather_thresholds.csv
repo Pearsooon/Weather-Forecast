@@ -1,0 +1,7 @@
+metric,min_value,max_value,unit,description
+temperature,-50,60,celsius,Valid temperature range
+humidity,0,100,percent,Valid humidity range
+precipitation,0,500,mm,Valid daily precipitation
+pressure,950,1050,hpa,Valid atmospheric pressure
+wind_speed,0,150,km_per_hour,Valid wind speed
+cloud_cover,0,100,percent,Valid cloud cover percentage

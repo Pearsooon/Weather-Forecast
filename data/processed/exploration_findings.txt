@@ -1,0 +1,28 @@
+
+📊 DATA EXPLORATION SUMMARY
+
+1. DATASET OVERVIEW:
+   - Total Records: 87,720
+   - Locations: 5
+   - Date Range: 2024-01-22 17:00:00 to 2026-01-22 16:00:00
+   - Duration: 730 days
+
+2. DATA QUALITY:
+   - Missing Values: 0 (0.00%)
+   - Duplicate Records: 0
+   - Data Completeness: 100.00%
+
+3. TEMPERATURE:
+   - Mean: 25.91°C
+   - Range: 6.70°C to 40.15°C
+   - Std Dev: 4.56°C
+
+4. PRECIPITATION:
+   - Total: 23951.80 mm
+   - Average Daily: 32.72 mm
+   - Days with Rain: 719
+
+5. STRONGEST CORRELATIONS:
+   1. temperature vs pressure: -0.680
+   2. pressure vs temperature: -0.680
+   3. humidity vs temperature: -0.348

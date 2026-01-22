@@ -1,0 +1,33 @@
+version: 2
+
+# Document all singular tests
+tests:
+  - name: assert_daily_records_per_location
+    description: Ensures each location has approximately one record per day
+  
+  - name: assert_no_future_dates
+    description: Ensures no weather records are dated in the future
+  
+  - name: assert_temperature_consistency
+    description: Validates min <= avg <= max temperature
+  
+  - name: assert_positive_precipitation
+    description: Ensures precipitation is non-negative
+  
+  - name: assert_data_quality_score
+    description: Ensures average quality score is above 80%
+  
+  - name: assert_no_duplicate_daily_records
+    description: Checks for duplicate daily records per location
+  
+  - name: assert_feature_lag_consistency
+    description: Validates lag features match historical values
+  
+  - name: assert_rolling_average_validity
+    description: Ensures rolling averages are within reasonable bounds
+  
+  - name: assert_location_coverage
+    description: Ensures all expected locations have data
+  
+  - name: assert_date_continuity
+    description: Checks for gaps in daily date sequence

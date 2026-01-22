@@ -1,0 +1,43 @@
+version: 2
+
+models:
+  - name: stg_weather_raw
+    description: Staged weather data with basic transformations
+
+    columns:
+      - name: record_id
+        description: Unique record identifier
+        tests:
+          - unique
+          - not_null
+
+      - name: datetime
+        description: Measurement timestamp
+        tests:
+          - not_null
+
+      - name: temperature
+        description: Temperature in Celsius
+        tests:
+          - not_null
+          - valid_temperature_range
+
+      - name: humidity
+        description: Relative humidity percentage
+        tests:
+          - valid_humidity_range
+
+      - name: precipitation
+        description: Precipitation in mm
+        tests:
+          - non_negative
+
+      - name: pressure
+        description: Atmospheric pressure in hPa
+        tests:
+          - not_null
+
+      - name: wind_speed
+        description: Wind speed in km/h
+        tests:
+          - non_negative
