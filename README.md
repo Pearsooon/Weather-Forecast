@@ -30,14 +30,14 @@ This project implements a complete weather forecasting solution for major Vietna
 - **Data Transformation**: dbt models for data quality and feature engineering
 - **Statistical Analysis**: Hypothesis testing, correlation analysis, and inference
 - **Machine Learning**: Temperature prediction using ensemble models
-- **Visualization**: Interactive Power BI dashboards
+- **Visualization**: With interactive Power BI dashboards
 
 ### Key Features
 
 ✅ Real-time weather data extraction from Open-Meteo API  
 ✅ Scalable data warehouse architecture in Snowflake  
 ✅ Modular dbt transformations with 9+ models across 3 layers
-✅ Automated data quality tests (25+ tests)
+✅ Automated data quality tests (45 tests)
 ✅ Self-documenting data lineage with dbt docs
 ✅ Automated data quality checks and transformations  
 ✅ Advanced statistical inference and hypothesis testing  
@@ -230,8 +230,6 @@ python -m venv venv
 # Activate (Windows)
 venv\Scripts\activate
 
-# Activate (Mac/Linux)
-source venv/bin/activate
 ```
 
 ### 3. Install Dependencies
@@ -241,16 +239,7 @@ pip install -r requirements.txt
 
 ### 4. Configure Snowflake
 
-Update `config/snowflake_config.json` with your credentials:
-```json
-{
-  "user": "YOUR_USERNAME",
-  "password": "YOUR_PASSWORD",
-  "account": "YOUR_ACCOUNT",
-  "warehouse": "WEATHER_WH",
-  "database": "WEATHER_DB",
-  "schema": "RAW"
-}
+Update `config/snowflake_config.json.example` with your credentials, them remove '.example' file name. Do the same with 'profiles.yml.example' in <b>dbt_project</b> folder
 ```
 
 ### 5. Setup Snowflake Database

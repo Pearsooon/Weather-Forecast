@@ -1,0 +1,8 @@
+{
+  "user": "SNOWFLAKE_USER",
+  "password": "SNOWFLAKE_PASSWORD",
+  "account": "SNOWFLAKE_ACCOUNT",
+  "warehouse": "SNOWFLAKE_WAREHOUSE",
+  "database": "SNOWFLAKE_DB",
+  "schema": "SNOWFLAKE_SCHEMA"
+}
