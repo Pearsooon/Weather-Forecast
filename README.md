@@ -30,7 +30,7 @@ This project implements a complete weather forecasting solution for major Vietna
 - **Data Transformation**: dbt models for data quality and feature engineering
 - **Statistical Analysis**: Hypothesis testing, correlation analysis, and inference
 - **Machine Learning**: Temperature prediction using ensemble models
-- **Visualization**: With interactive Power BI dashboards
+- **Data Visualization**: With interactive Power BI dashboards
 
 ### Key Features
 
@@ -110,14 +110,12 @@ weather-forecasting/
 │   ├── tests/                         # Data quality tests
 │   ├── dbt_project.yml               # dbt configuration
 │   ├── profiles.yml                   # Connection profiles
-│   └── README.md                      # dbt documentation
 │
 ├── notebooks/                         # Jupyter notebooks for analysis
 │   ├── 01_data_exploration.ipynb     # Initial EDA
-│   ├── 02_data_cleaning.ipynb        # Data cleaning process
-│   ├── 03_eda.ipynb                  # Comprehensive EDA
-│   ├── 04_statistical_inference.ipynb # Hypothesis testing
-│   └── 05_regression_modeling.ipynb   # ML model development
+│   ├── 02_eda.ipynb                  # Comprehensive EDA
+│   ├── 03_statistical_inference.ipynb # Hypothesis testing
+│   └── 04_regression_modeling.ipynb   # ML model development
 │
 ├── scripts/                           # Python automation scripts
 │   ├── extract_data.py               # Data extraction from API
@@ -396,7 +394,7 @@ WHERE datetime IS NOT NULL
 ### Step 4: Analyze (Python)
 ```python
 # notebooks/05_regression_modeling.ipynb
-query = "SELECT * FROM MARTS.FCT_WEATHER_FEATURES"  ← Từ dbt MARTS
+query = "SELECT * FROM MARTS.FCT_WEATHER_FEATURES"  
 df = execute_query(query)
 
 rf_model.fit(X_train, y_train)
@@ -467,42 +465,43 @@ Power BI connects to `MARTS.*` tables created by dbt
 ### Dashboard Pages
 
 **Page 1: Overview**
-- KPI Cards: Avg Temperature, Total Precipitation, Avg Humidity
-- Line Chart: Temperature trends by location
-- Map: Weather conditions by city
-- Slicers: Date range, Location, Season
+- KPI Cards: Avg Temperature, Max Temperature, Total Locations, Avg Humidity, Number of Rainy days
+- Line Chart: Average temperature trend by month and location
+- Bar Chart: Average temperature by location
+- Area Chart: Total precipitation by month
+- Slicer: Location (City)
+- <b> Purpose: </b>Quickly understand overall climate patterns, temperature trends, and rainfall distribution across cities.
 
-**Page 2: Statistical Analysis**
-- Box Plots: Temperature distribution by month
-- Scatter Plot: Temperature vs Humidity correlation
-- Histogram: Precipitation distribution
-- Table: Statistical summary by location
+**Page 2: Location & Seasonal Analysis**
+- Scatter Plot: Latest average temperature vs. latest average humidity by location
+- Heatmap (Matrix): Monthly average temperature by location
+- Clustered Column Chart: Average wind speed by season and location
+- <b>Purpose: </b>Analyze seasonal effects, compare cities side-by-side, and identify climate differences such as wind intensity and humidity patterns.
 
-**Page 3: Forecasts**
-- Line Chart: Actual vs Predicted temperature
-- Metrics: Model performance (RMSE, MAE, R²)
-- Residual Plot: Prediction errors
-- Bar Chart: Feature importance
+**Page 3: Daily Weather Details**
+- Table: Date, Location, Average Temperature, Total Precipitation, Average Humidity, Average Wind Speed, Data Quality Indicator
+- Condition Formatting: Data bars for temperature and humidity, icon for precipitation and data quality status
+- <b>Purpose: </b>Enable detailed inspection of daily weather records and support data validation and exploratory analysis.
 
 ### Key Metrics
 ```dax
-// Average Temperature
-Avg Temperature = AVERAGE(fct_weather_daily[avg_temperature])
+-- Average Temperature
+Avg Temperature =
+AVERAGE(fct_weather_daily[avg_temperature])
 
-// Temperature Trend
-Temperature Trend = 
-VAR CurrentTemp = [Avg Temperature]
-VAR PreviousTemp = CALCULATE(
-    [Avg Temperature],
-    DATEADD(fct_weather_daily[date], -7, DAY)
-)
-RETURN CurrentTemp - PreviousTemp
+-- Average Humidity
+Avg Humidity =
+AVERAGE(fct_weather_daily[avg_humidity])
 
-// Forecast Accuracy
-Forecast Accuracy = 
-1 - DIVIDE(
-    AVERAGE(fct_forecast[absolute_error]),
-    AVERAGE(fct_weather_daily[avg_temperature])
+-- Total Precipitation
+Total Precipitation =
+SUM(fct_weather_daily[total_precipitation])
+
+-- Rainy Days
+Rainy Days =
+CALCULATE(
+    COUNTROWS(fct_weather_daily),
+    fct_weather_daily[total_precipitation] > 0
 )
 ```
 
@@ -632,17 +631,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - [Open-Meteo](https://open-meteo.com/) for free weather API
-- [dbt Labs](https://www.getdbt.com/) for amazing transformation tool
+- [dbt Labs](https://www.getdbt.com/) for transformation tool
 - [Snowflake](https://www.snowflake.com/) for cloud data warehouse
-- Vietnamese weather enthusiasts community
-
----
-
-## 📊 Project Stats
-
-![Lines of Code](https://img.shields.io/badge/Lines%20of%20Code-5000+-blue)
-![SQL Scripts](https://img.shields.io/badge/SQL%20Scripts-15+-green)
-![dbt Models](https://img.shields.io/badge/dbt%20Models-9-orange)
-![Notebooks](https://img.shields.io/badge/Notebooks-5-purple)
 
 **Last Updated**: January 2025
