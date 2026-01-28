@@ -1,0 +1,9 @@
+openmeteo-requests
+requests-cache
+pandas
+numpy
+retry_requests
+datetime
+dbt-snowflake
+snowflake-connector-python
+snowflake-sqlalchemy

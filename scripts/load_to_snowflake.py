@@ -1,7 +1,13 @@
+"""
+Snowflake Data Loader
+Supports both backfill (full load) and daily incremental loads
+Handles duplicate prevention via record_id
+"""
 import pandas as pd
 import sys
 import os
 import re
+from datetime import datetime, timedelta
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scripts.utils import get_snowflake_connection, upload_dataframe
@@ -11,36 +17,23 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 class SnowflakeLoader:
     def __init__(self, config_path=None):
-        BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.config_path = config_path or os.path.join(
             BASE_DIR, 'config', 'snowflake_config.json'
         )
     
     def clean_sql_content(self, sql_content):
         """Clean SQL content by removing comments and empty lines"""
-        # Remove single-line comments (-- ...)
         sql_content = re.sub(r'--[^\n]*', '', sql_content)
-        
-        # Remove multi-line comments (/* ... */)
         sql_content = re.sub(r'/\*.*?\*/', '', sql_content, flags=re.DOTALL)
-        
-        # Remove empty lines and extra whitespace
         lines = [line.strip() for line in sql_content.split('\n') if line.strip()]
         sql_content = ' '.join(lines)
-        
         return sql_content
     
     def split_sql_statements(self, sql_content):
         """Split SQL content into individual statements"""
-        # Clean the SQL first
         sql_content = self.clean_sql_content(sql_content)
-        
-        # Split by semicolon
         statements = sql_content.split(';')
-        
-        # Filter out empty statements
         statements = [s.strip() for s in statements if s.strip()]
-        
         return statements
         
     def execute_sql_file(self, sql_file_path):
@@ -66,14 +59,12 @@ class SnowflakeLoader:
                 try:
                     cursor.execute(statement)
                     success_count += 1
-                    # Only print success for important statements
                     if any(keyword in statement.upper() for keyword in ['CREATE', 'ALTER', 'GRANT', 'USE']):
                         print(f"   ✅ Statement {idx}: {statement[:50]}...")
                 except Exception as e:
                     error_count += 1
                     error_msg = str(e)
                     
-                    # Classify errors
                     if 'does not exist' in error_msg:
                         print(f"   ⚠️  Statement {idx}: Object does not exist (expected on first run)")
                     elif 'Unsupported feature' in error_msg:
@@ -130,21 +121,18 @@ class SnowflakeLoader:
         cursor = conn.cursor()
         
         try:
-            # Check database
             cursor.execute("SHOW DATABASES LIKE 'WEATHER_DB'")
             if cursor.fetchone():
                 print("✅ Database WEATHER_DB exists")
             else:
                 print("❌ Database WEATHER_DB not found")
             
-            # Check warehouse
             cursor.execute("SHOW WAREHOUSES LIKE 'WEATHER_WH'")
             if cursor.fetchone():
                 print("✅ Warehouse WEATHER_WH exists")
             else:
                 print("❌ Warehouse WEATHER_WH not found")
             
-            # Check schemas
             cursor.execute("SHOW SCHEMAS IN DATABASE WEATHER_DB")
             schemas = cursor.fetchall()
             schema_names = [s[1] for s in schemas]
@@ -156,7 +144,6 @@ class SnowflakeLoader:
                 else:
                     print(f"❌ Schema {schema} not found")
             
-            # Check tables
             cursor.execute("""
                 SELECT TABLE_SCHEMA, TABLE_NAME 
                 FROM WEATHER_DB.INFORMATION_SCHEMA.TABLES 
@@ -179,30 +166,119 @@ class SnowflakeLoader:
             conn.close()
         
         print("\n" + "=" * 80 + "\n")
-            
-    def load_data(self, df):
-        """Load DataFrame to Snowflake RAW table"""
+    
+    def get_existing_record_ids(self, date_filter=None):
+        """
+        Get existing record_ids from Snowflake to prevent duplicates
+        
+        Args:
+            date_filter: Optional date (YYYY-MM-DD) to filter records
+        
+        Returns:
+            Set of existing record_ids
+        """
+        conn = get_snowflake_connection(self.config_path)
+        cursor = conn.cursor()
+        
         try:
-            print("\n📥 Loading data to Snowflake...")
+            if date_filter:
+                query = f"""
+                    SELECT record_id 
+                    FROM RAW.WEATHER_RAW 
+                    WHERE DATE(datetime) = '{date_filter}'
+                """
+            else:
+                query = "SELECT record_id FROM RAW.WEATHER_RAW"
             
-            # Add metadata columns
-            df['extract_date'] = pd.to_datetime('today').date()
-            df['record_id'] = df['location_name'] + '_' + df['datetime'].astype(str)
+            cursor.execute(query)
+            existing_ids = {row[0] for row in cursor.fetchall()}
             
-            # Reorder columns to match table structure
-            column_order = [
-                'record_id', 'datetime', 'location_name', 'latitude', 'longitude',
-                'temperature', 'humidity', 'precipitation', 'pressure',
-                'wind_speed', 'wind_direction', 'cloud_cover', 'extract_date'
-            ]
-            df = df[column_order]
+            return existing_ids
+            
+        except Exception as e:
+            print(f"⚠️  Could not fetch existing records: {str(e)}")
+            return set()
+        finally:
+            cursor.close()
+            conn.close()
+    
+    def load_data_incremental(self, df, extract_date=None):
+        """
+        Load DataFrame to Snowflake with duplicate prevention
+        
+        Args:
+            df: DataFrame to load
+            extract_date: Optional date to check for duplicates (YYYY-MM-DD)
+        """
+        try:
+            print(f"\n📥 Loading data to Snowflake (incremental mode)...")
+            print(f"   Total records to load: {len(df):,}")
+            
+            # Get existing record_ids for the date
+            if extract_date:
+                print(f"   Checking for duplicates on date: {extract_date}")
+                existing_ids = self.get_existing_record_ids(extract_date)
+            else:
+                print(f"   Checking for duplicates (full scan)...")
+                existing_ids = self.get_existing_record_ids()
+            
+            if existing_ids:
+                print(f"   Found {len(existing_ids):,} existing records")
+                
+                # Filter out duplicates
+                df_filtered = df[~df['record_id'].isin(existing_ids)].copy()
+                duplicates = len(df) - len(df_filtered)
+                
+                if duplicates > 0:
+                    print(f"   ⚠️  Skipping {duplicates:,} duplicate records")
+                
+                if len(df_filtered) == 0:
+                    print(f"   ℹ️  All records already exist in database - nothing to load")
+                    return
+                
+                df = df_filtered
+                print(f"   📊 New records to insert: {len(df):,}")
+            else:
+                print(f"   ℹ️  No existing records found (first load)")
             
             # Upload to Snowflake
             upload_dataframe(
                 df, 
                 'WEATHER_RAW', 
                 if_exists='append',
-                config_path=self.config_path
+                config_path=self.config_path,
+                verbose=False
+            )
+            
+            print(f"✅ Successfully loaded {len(df):,} new records to WEATHER_RAW")
+            
+        except Exception as e:
+            print(f"❌ Error loading data: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise
+    
+    def load_data_full(self, df):
+        """
+        Load DataFrame to Snowflake (full replace mode - for backfill)
+        WARNING: This truncates existing data
+        """
+        try:
+            print(f"\n📥 Loading data to Snowflake (full replace mode)...")
+            print(f"   ⚠️  This will REPLACE all existing data")
+            
+            proceed = input("   Continue? (yes/no): ").strip().lower()
+            if proceed != 'yes':
+                print("   ❌ Load cancelled")
+                return
+            
+            # Upload to Snowflake (replace mode)
+            upload_dataframe(
+                df, 
+                'WEATHER_RAW', 
+                if_exists='replace',
+                config_path=self.config_path,
+                verbose=False
             )
             
             print(f"✅ Successfully loaded {len(df):,} records to WEATHER_RAW")
@@ -211,6 +287,7 @@ class SnowflakeLoader:
             print(f"❌ Error loading data: {str(e)}")
             import traceback
             traceback.print_exc()
+            raise
     
     def validate_load(self):
         """Validate data loaded successfully"""
@@ -235,10 +312,10 @@ class SnowflakeLoader:
             print("\n" + "=" * 80)
             print("✅ DATA VALIDATION RESULTS")
             print("=" * 80)
-            print(f"   📌 Total records:     {result[0]:,}")
-            print(f"   📌 Unique locations:  {result[1]}")
-            print(f"   📌 Unique days:       {result[4]:,}")
-            print(f"   📌 Date range:        {result[2]} to {result[3]}")
+            print(f"   📊 Total records:     {result[0]:,}")
+            print(f"   📍 Unique locations:  {result[1]}")
+            print(f"   📅 Unique days:       {result[4]:,}")
+            print(f"   📅 Date range:        {result[2]} to {result[3]}")
             print("=" * 80 + "\n")
             
             # Check by location
@@ -265,8 +342,9 @@ class SnowflakeLoader:
             cursor.close()
             conn.close()
 
-# Usage
-if __name__ == "__main__":
+
+def main():
+    """Main loader function"""
     loader = SnowflakeLoader()
     
     print("\n" + "🌤️ " * 20)
@@ -295,13 +373,23 @@ if __name__ == "__main__":
     print("\n" + "=" * 80)
     print("OPTION 2: Load Data")
     print("=" * 80)
-    print("This will load weather data from CSV to Snowflake")
+    print("Choose load mode:")
+    print("  1. Backfill (full replace) - loads weather_raw_data.csv")
+    print("  2. Daily (incremental) - loads weather_daily_YYYY-MM-DD.csv")
     print()
     
-    load_choice = input("Do you want to load data? (yes/no): ").strip().lower()
+    load_choice = input("Select mode (1/2) or 'no' to skip: ").strip()
     
-    if load_choice == 'yes':
-        csv_path = 'data/raw/weather_raw_data.csv'
+    if load_choice in ['1', '2']:
+        if load_choice == '1':
+            # Backfill mode
+            csv_path = os.path.join(BASE_DIR, 'data', 'raw', 'weather_raw_data.csv')
+            load_mode = 'full'
+        else:
+            # Daily mode - find most recent daily file
+            yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+            csv_path = os.path.join(BASE_DIR, 'data', 'raw', f'weather_daily_{yesterday}.csv')
+            load_mode = 'incremental'
         
         if os.path.exists(csv_path):
             print(f"\n📂 Reading data from: {csv_path}")
@@ -311,17 +399,30 @@ if __name__ == "__main__":
             print(f"✅ Loaded {len(df):,} records from CSV")
             print(f"   Columns: {list(df.columns)}")
             
-            loader.load_data(df)
+            if load_mode == 'full':
+                loader.load_data_full(df)
+            else:
+                # Extract date from datetime for duplicate checking
+                extract_date = df['datetime'].dt.date.iloc[0].strftime("%Y-%m-%d")
+                loader.load_data_incremental(df, extract_date)
+            
             loader.validate_load()
         else:
             print(f"❌ File not found: {csv_path}")
-            print("   Please run extract_data.py first to get the data!")
+            if load_mode == 'incremental':
+                print("   Please run: python scripts/extract/extract_daily.py")
+            else:
+                print("   Please run: python scripts/extract/extract_backfill.py")
     
     print("\n" + "=" * 80)
     print("✅ PROCESS COMPLETED!")
     print("=" * 80)
     print("\nNext steps:")
     print("  1. Run dbt models: cd dbt_project && dbt run")
-    print("  2. Open Jupyter notebooks for analysis")
-    print("  3. Connect Power BI to Snowflake MARTS schema")
+    print("  2. Setup Airflow: docker-compose up -d")
+    print("  3. Open Jupyter notebooks for analysis")
     print("\n" + "🌤️ " * 20 + "\n")
+
+
+if __name__ == "__main__":
+    main()

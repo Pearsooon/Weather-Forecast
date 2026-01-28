@@ -54,16 +54,18 @@ This project implements a complete weather forecasting solution for major Vietna
 ---
 
 ## 🛠️ Tech Stack
-
-| Category | Technologies |
-|----------|-------------|
-| **Data Source** | Open-Meteo API |
-| **Data Warehouse** | Snowflake (Cloud) |
-| **ETL/ELT** | Python, dbt |
-| **Analytics** | Python (pandas, scipy, scikit-learn) |
-| **Visualization** | Power BI, Matplotlib, Seaborn, Plotly |
-| **ML Framework** | scikit-learn (Random Forest, Gradient Boosting) |
-| **Version Control** | Git |
+┌─────────────────────┬─────────────────────────────────────────────────┐
+|      Category       |                 Technologies                    |
+|---------------------|-------------------------------------------------|
+| **Data Source**     | Open-Meteo API                                  |
+| **Data Warehouse**  | Snowflake (Cloud)                               |
+| **ETL/ELT**         | Python, dbt, Apache Airflow                     |
+| **Analytics**       | Python (pandas, scipy, scikit-learn)            |
+| **Orchestration**   | Apache Airflow (Docker-based)                   |
+| **Visualization**   | Power BI, Matplotlib, Seaborn, Plotly           |
+| **ML Framework**    | scikit-learn (Random Forest, Gradient Boosting) |
+| **Version Control** | Git                                             |
+└───────────────────────────────────────────────────────────────────────┘
 
 ### Python Libraries
 ```
@@ -118,7 +120,9 @@ weather-forecasting/
 │   └── 04_regression_modeling.ipynb   # ML model development
 │
 ├── scripts/                           # Python automation scripts
-│   ├── extract_data.py               # Data extraction from API
+│   ├── extractor.py               # Data extraction from API
+│   ├── extract_daily.py               # Data extraction from API (Daily through Apache Airflow)
+│   ├── extract_backfill.py               # Data extraction from API (Run manually, 1 time only)
 │   ├── load_to_snowflake.py          # Data loading to Snowflake
 │   └── utils.py                      # Utility functions
 │
@@ -133,48 +137,67 @@ weather-forecasting/
 
 ## 🏗️ Architecture
 
-### Data Flow
+The project supports **two execution modes** depending on the use case:
+
+### 1️⃣ Manual Data Flow (Backfill / One-off Run)
+
+**Use Case**: Initial setup or historical data reload  
+**Scope**: 2 years of historical data (~87,600 records)  
+**Trigger**: Manual execution
+
 ```
-┌┌─────────────────┐
-│  Open-Meteo API │
-└────────┬────────┘
-         │ 1. Extract (Python script)
-         ▼
-┌─────────────────┐
-│   Raw CSV Files │
-└────────┬────────┘
-         │ 2. Load (Python script)
-         ▼
-┌──────────────────────────────────────────────────────────┐
-│              Snowflake Data Warehouse                    │
-│                                                          │
+            ┌─────────────────┐
+            │  Open-Meteo API │
+            └────────┬────────┘
+                     │ 1. Extract (extract_backfill.py)
+                     │    - 2 years historical data
+                     │    - 5 locations × 730 days × 24h
+                     ▼
+            ┌─────────────────┐
+            │   Raw CSV Files │
+            │ weather_raw_    │
+            │   data.csv      │
+            │   (~35 MB)      │
+            └────────┬────────┘
+                     │ 2. Load (load_to_snowflake.py)
+                     │    - Full replace mode
+                     │    - Confirm before execute
+                     ▼
+┌────────────────────────────────────────────────────────┐
+│              Snowflake Data Warehouse                  │
+│                                                        │
 │  ┌────────────────────────────────────────────────┐    │
 │  │ RAW Layer                                      │    │
 │  │  - WEATHER_RAW (Table)                         │    │
+│  │    ~87,600 records                             │    │
 │  └─────────────────┬──────────────────────────────┘    │
-│                    │ 3. dbt Transformations             │
-│                    ▼                                     │
+│                    │ 3. dbt Transformations            │
+│                    │    Manual: dbt run                │
+│                    ▼                                   │
 │  ┌────────────────────────────────────────────────┐    │
 │  │ STAGING Layer (dbt views)                      │    │
 │  │  - STG_WEATHER_RAW                             │    │
+│  │    Cleaned & validated data                    │    │
 │  └─────────────────┬──────────────────────────────┘    │
-│                    │ 4. dbt Transformations             │
-│                    ▼                                     │
+│                    │ 4. dbt Transformations            │
+│                    ▼                                   │
 │  ┌────────────────────────────────────────────────┐    │
 │  │ INTERMEDIATE Layer (dbt views)                 │    │
 │  │  - INT_WEATHER_QUALITY_CHECKED                 │    │
 │  │  - INT_WEATHER_ENRICHED                        │    │
+│  │    Business logic & quality checks             │    │
 │  └─────────────────┬──────────────────────────────┘    │
-│                    │ 5. dbt Transformations             │
-│                    ▼                                     │
+│                    │ 5. dbt Transformations            │
+│                    ▼                                   │
 │  ┌────────────────────────────────────────────────┐    │
 │  │ MARTS Layer (dbt tables)                       │    │
 │  │  - FCT_WEATHER_DAILY                           │    │
 │  │  - FCT_WEATHER_FEATURES                        │    │
 │  │  - DIM_LOCATION                                │    │
 │  │  - DIM_DATE                                    │    │
+│  │    Analytics-ready dimensional model           │    │
 │  └─────────────────┬──────────────────────────────┘    │
-└────────────────────┼──────────────────────────────────┘
+└────────────────────┼───────────────────────────────────┘
                      │
           ┌──────────┴──────────┐
           ▼                     ▼
@@ -184,6 +207,153 @@ weather-forecasting/
     │ (Jupyter)│          │ Dashboard│
     └──────────┘          └──────────┘
 ```
+
+---
+
+### 2️⃣ Automated Data Flow (Apache Airflow – Daily)
+
+**Use Case**: Production daily incremental load  
+**Scope**: Yesterday's data only (~120 records/day)  
+**Trigger**: Scheduled (2:00 AM daily)
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                   Apache Airflow Scheduler                   │
+│                   Schedule: 2 AM                             │
+└───────────────────────────┬──────────────────────────────────┘
+                            │ Trigger DAG daily
+                            ▼
+┌──────────────────────────────────────────────────────────────┐
+│         DAG: weather_forecast_pipeline (6 tasks)             │
+│                                                              │
+│  ┌────────────────────────────────────────────────────┐      │
+│  │ [1] extract_weather_data                           │      │
+│  │ ├─ Type: PythonOperator                            │      │
+│  │ ├─ Script: extract_daily.py                        │      │
+│  │ ├─ Scope: Yesterday's data only                    │      │
+│  │ ├─ Source: Open-Meteo API                          │      │
+│  │ ├─ Output: weather_daily_YYYY-MM-DD.csv (~30 KB)   │      │
+│  │ └─ Records: 5 locations × 24 hours = 120 records   │      │
+│  └──────────────────────┬─────────────────────────────┘      │
+│                         │ XCom: Pass CSV filepath            │
+│                         ▼                                    │
+│  ┌────────────────────────────────────────────────────┐      │
+│  │ [2] load_to_snowflake                              │      │
+│  │ ├─ Type: PythonOperator                            │      │
+│  │ ├─ Mode: Incremental load                          │      │
+│  │ ├─ Logic: Check existing record_ids                │      │
+│  │ │         Filter duplicates                        │      │
+│  │ │         Insert only new records                  │      │
+│  │ ├─ Target: RAW.WEATHER_RAW                         │      │
+│  │ └─ Safety: Idempotent (safe to re-run)             │      │
+│  └──────────────────────┬─────────────────────────────┘      │
+│                         │                                    │
+│                         ▼                                    │
+│  ┌────────────────────────────────────────────────────┐      │
+│  │ [3] dbt_seed                                       │      │
+│  │ ├─ Type: BashOperator                              │      │
+│  │ ├─ Command: dbt seed                               │      │
+│  │ └─ Purpose: Load location metadata                 │      │
+│  └──────────────────────┬─────────────────────────────┘      │
+│                         │                                    │
+│                         ▼                                    │
+│  ┌────────────────────────────────────────────────────┐      │
+│  │ [4] dbt_run                                        │      │
+│  │ ├─ Type: BashOperator                              │      │
+│  │ ├─ Command: dbt run                                │      │
+│  │ ├─ Models: All transformations                     │      │
+│  │ │   • Staging: STG_WEATHER_RAW                     │      │
+│  │ │   • Intermediate: INT_WEATHER_*                  │      │
+│  │ │   • Marts: FCT_*, DIM_*                          │      │
+│  │ └─ Mode: Incremental where applicable              │      │
+│  └──────────────────────┬─────────────────────────────┘      │
+│                         │                                    │
+│                         ▼                                    │
+│  ┌────────────────────────────────────────────────────┐      │
+│  │ [5] dbt_test                                       │      │
+│  │ ├─ Type: BashOperator                              │      │
+│  │ ├─ Command: dbt test                               │      │
+│  │ ├─ Tests: 45+ data quality checks                  │      │
+│  │ │   • Not null validations                         │      │
+│  │ │   • Unique key checks                            │      │
+│  │ │   • Referential integrity                        │      │
+│  │ │   • Range validations                            │      │
+│  │ └─ Action: Fail DAG if critical tests fail         │      │
+│  └──────────────────────┬─────────────────────────────┘      │
+│                         │                                    │
+│                         ▼                                    │
+│  ┌────────────────────────────────────────────────────┐      │
+│  │ [6] dbt_docs_generate                              │      │
+│  │ ├─ Type: BashOperator                              │      │
+│  │ ├─ Command: dbt docs generate                      │      │
+│  │ ├─ Trigger: all_done (even if tests fail)          │      │
+│  │ └─ Purpose: Update data lineage documentation      │      │
+│  └────────────────────────────────────────────────────┘      │
+│                                                              │
+│  Task Dependencies:                                          │
+│  extract → load → seed → run → test → docs                  │
+│                                                              │
+└───────────────────────────┬──────────────────────────────────┘
+                            │ Daily output
+                            ▼
+┌──────────────────────────────────────────────────────────────┐
+│              Snowflake Data Warehouse (Updated)              │
+│                                                              │
+│  RAW.WEATHER_RAW: +120 new records daily                     │
+│  MARTS tables: Refreshed with new transformations            │
+└───────────────────────────┬──────────────────────────────────┘
+                            │
+          ┌─────────────────┴─────────────────┐
+          ▼                                   ▼
+    ┌──────────────┐                   ┌─────────────┐
+    │  Power BI    │                   │  Jupyter    │
+    │  Dashboard   │                   │  Notebooks  │
+    │  Auto-refresh│                   │  Analysis   │
+    └──────────────┘                   └─────────────┘
+```
+
+---
+
+### Key Differences Between Modes
+
+| Aspect | Manual (Backfill) | Automated (Airflow) |
+|--------|-------------------|---------------------|
+| **Trigger** | Manual execution | Scheduled (2 AM daily) |
+| **Data Scope** | 2 years (~87,600 records) | Yesterday (~120 records) |
+| **Load Mode** | Full replace | Incremental (append) |
+| **File Size** | ~35 MB | ~30 KB |
+| **Frequency** | One-time | Daily |
+| **Duplicate Handling** | Replace all | Smart deduplication |
+| **dbt Execution** | Manual | Automated |
+| **Use Case** | Initial setup | Production pipeline |
+| **Scripts** | `extract_backfill.py` | `extract_daily.py` |
+
+---
+
+### Duplicate Prevention Logic
+
+**Key Field**: `record_id = location_name + '_' + datetime`
+
+```python
+# Example record_ids
+"Hanoi_2026-01-27 00:00:00"
+"Ho Chi Minh City_2026-01-27 14:00:00"
+
+# Airflow load logic (incremental)
+1. Query existing record_ids for yesterday's date
+2. Filter DataFrame: df[~df['record_id'].isin(existing_ids)]
+3. Insert only new records (safe to re-run)
+```
+
+**Benefits**:
+- Idempotent pipeline (safe to re-run tasks)
+- No duplicate records in database
+- Fast lookups via date filtering
+- Prevents data corruption
+
+---
+
+
 
 ### Snowflake Schema Structure
 
@@ -258,13 +428,30 @@ cd dbt_project
 dbt deps  # Install dbt packages
 ```
 
----
+## ⏱️ Apache Airflow Setup (Optional – Production Mode)
+
+This project includes a Docker-based Apache Airflow setup for daily incremental ingestion.
+
+### Key Notes
+- Airflow is **NOT required** for initial backfill
+- Airflow runs **daily incremental only**
+- DAG location: `dags/weather_pipeline_dag.py`
+
+### Start Airflow
+```bash
+docker-compose up -d
+
+- Trigger DAG
+- UI: http://localhost:8080
+- DAG name: weather_forecast_pipeline
+
+
 
 ## 📊 Usage Guide
 
 ### Step 1: Extract Weather Data
 ```bash
-python scripts/extract_data.py
+python scripts/extract_backfill.py
 ```
 
 This will:
@@ -566,38 +753,7 @@ Snowflake RBAC setup:
 
 ---
 
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**1. Snowflake Connection Error**
-```bash
-# Check credentials in config/snowflake_config.json
-# Verify warehouse is running
-# Check network/firewall settings
-```
-
-**2. dbt Model Failures**
-```bash
-# Check data exists in source tables
-dbt debug  # Verify connection
-dbt run --select model_name  # Run specific model
-```
-
-**3. Memory Error in Notebooks**
-```python
-# Load data in chunks
-df = pd.read_csv('file.csv', chunksize=10000)
-
-# Or limit records
-query = "SELECT * FROM table LIMIT 100000"
-```
-
----
-
 ## 📚 Documentation
-
-- [dbt Documentation](./dbt_project/README.md)
 - [API Documentation](https://open-meteo.com/en/docs)
 - [Snowflake Docs](https://docs.snowflake.com/)
 

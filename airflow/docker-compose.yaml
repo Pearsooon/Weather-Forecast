@@ -1,0 +1,49 @@
+version: "3.8"
+
+x-airflow-common:
+  &airflow-common
+  image: apache/airflow:2.8.1
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__FERNET_KEY: ""
+    AIRFLOW__WEBSERVER__SECRET_KEY: "airflow_secret"
+    PYTHONPATH: /opt/airflow
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ../scripts:/opt/airflow/scripts
+    - ../config:/opt/airflow/config
+    - ../dbt_project:/opt/airflow/dbt_project
+    - ./requirements.txt:/requirements.txt
+  depends_on:
+    - postgres
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: >
+      bash -c "pip install -r /requirements.txt && airflow webserver"
+    ports:
+      - "8080:8080"
+
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: >
+      bash -c "pip install -r /requirements.txt && airflow scheduler"
+
+
+volumes:
+  postgres-db-volume:
+  
