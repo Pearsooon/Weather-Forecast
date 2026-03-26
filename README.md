@@ -54,18 +54,17 @@ This project implements a complete weather forecasting solution for major Vietna
 ---
 
 ## 🛠️ Tech Stack
-┌─────────────────────┬─────────────────────────────────────────────────┐
-|      Category       |                 Technologies                    |
-|---------------------|-------------------------------------------------|
-| **Data Source**     | Open-Meteo API                                  |
-| **Data Warehouse**  | Snowflake (Cloud)                               |
-| **ETL/ELT**         | Python, dbt, Apache Airflow                     |
-| **Analytics**       | Python (pandas, scipy, scikit-learn)            |
-| **Orchestration**   | Apache Airflow (Docker-based)                   |
-| **Visualization**   | Power BI, Matplotlib, Seaborn, Plotly           |
-| **ML Framework**    | scikit-learn (Random Forest, Gradient Boosting) |
-| **Version Control** | Git                                             |
-└───────────────────────────────────────────────────────────────────────┘
+
+| Category            | Technologies                                      |
+|---------------------|---------------------------------------------------|
+| Data Source         | Open-Meteo API                                    |
+| Data Warehouse      | Snowflake (Cloud)                                 |
+| ETL/ELT             | Python, dbt, Apache Airflow                       |
+| Analytics           | Python (pandas, scipy, scikit-learn)              |
+| Orchestration       | Apache Airflow (Docker-based)                     |
+| Visualization       | Power BI, Matplotlib, Seaborn, Plotly             |
+| ML Framework        | scikit-learn (Random Forest, Gradient Boosting)   |
+| Version Control     | Git                                               |
 
 ### Python Libraries
 ```
